@@ -70,7 +70,6 @@ jobs:
       - name: Deploy manifests
         run: |
           kubectl apply -f infra/k8s/namespace.yaml
-          kubectl apply -f infra/k8s/pvc.yaml
           kubectl apply -f infra/k8s/api-deployment.yaml
           kubectl apply -f infra/k8s/api-service.yaml
           kubectl apply -f infra/k8s/ingestion-job.yaml
