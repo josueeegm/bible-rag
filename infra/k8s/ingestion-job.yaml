@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingestion-job
+  namespace: gio
+spec:
+  template:
+    spec:
+      nodeSelector:
+        agentpool: nodepool1
+      restartPolicy: Never
+      containers:
+      - name: ingestion
+        image: giobibleacr2032.azurecr.io/ingestion-worker:latest
+        env:
+        - name: DOC_INTELLIGENCE_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: di-secrets
+              key: endpoint
+        - name: DOC_INTELLIGENCE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: di-secrets
+              key: key
+        volumeMounts:
+        - name: pdfs
+          mountPath: /pdfs
+        - name: output
+          mountPath: /output
+      volumes:
+      - name: pdfs
+        emptyDir: {}   # Más adelante: PVC o BlobFuse
+      - name: output
+        emptyDir: {}   # Más adelante: PVC o BlobFuse

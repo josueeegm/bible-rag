@@ -1,0 +1,70 @@
+name: CI/CD to AKS (KeyVault-based)
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  ACR_NAME: giobibleacr2032
+  ACR_LOGIN: giobibleacr2032.azurecr.io
+  RESOURCE_GROUP: gio-rg
+  AKS_NAME: gio-aks
+  NAMESPACE: gio
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: |
+          az acr login --name $ACR_NAME
+
+      - name: Build and push API image (local docker)
+        run: |
+          docker build -t $ACR_LOGIN/bible-api:latest ./api
+          docker push $ACR_LOGIN/bible-api:latest
+
+      - name: Build and push ingestion image (local docker)
+        run: |
+          docker build -t $ACR_LOGIN/ingestion-worker:latest ./ingestion
+          docker push $ACR_LOGIN/ingestion-worker:latest
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials --resource-group $RESOURCE_GROUP --name $AKS_NAME --overwrite-existing
+
+      - name: Ensure imagePull secret (acr-secret) exists in cluster
+        run: |
+          ACR_USER=$(az acr credential show -n $ACR_NAME --query username -o tsv)
+          ACR_PASS=$(az acr credential show -n $ACR_NAME --query passwords[0].value -o tsv)
+          kubectl create secret docker-registry acr-secret \
+            --namespace $NAMESPACE \
+            --docker-server=$ACR_LOGIN \
+            --docker-username="$ACR_USER" \
+            --docker-password="$ACR_PASS" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Fetch DI secrets from Key Vault and create k8s secret
+        run: |
+          ENDPOINT=$(az keyvault secret show --vault-name giobiblekv2032 --name doc-intel-endpoint --query value -o tsv)
+          KEY=$(az keyvault secret show --vault-name giobiblekv2032 --name doc-intel-key --query value -o tsv)
+          kubectl create secret generic di-secrets \
+            -n $NAMESPACE \
+            --from-literal=endpoint="$ENDPOINT" \
+            --from-literal=key="$KEY" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy manifests
+        run: |
+          kubectl apply -f infra/k8s/namespace.yaml
+          kubectl apply -f infra/k8s/api-deployment.yaml
+          kubectl apply -f infra/k8s/api-service.yaml
+          kubectl apply -f infra/k8s/ingestion-job.yaml

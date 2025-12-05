@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bible-api
+  namespace: gio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bible-api
+  template:
+    metadata:
+      labels:
+        app: bible-api
+    spec:
+      containers:
+      - name: bible-api
+        image: giobibleacr2032.azurecr.io/bible-api:latest
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        env:
+        - name: LOG_LEVEL
+          value: "INFO"
