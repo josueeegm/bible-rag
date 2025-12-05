@@ -6,11 +6,6 @@ metadata:
 spec:
   template:
     spec:
-      imagePullSecrets:
-       - name: acr-secret
-      nodeSelector:
-        agentpool: nodepool1
-      restartPolicy: Never
       containers:
       - name: ingestion
         image: giobibleacr2032.azurecr.io/ingestion-worker:latest
@@ -26,12 +21,12 @@ spec:
               name: di-secrets
               key: key
         volumeMounts:
-        - name: pdfs
+        - name: shared-data
+          mountPath: /data
+        - name: shared-data
           mountPath: /pdfs
-        - name: output
-          mountPath: /output
+      restartPolicy: Never
       volumes:
-      - name: pdfs
-        emptyDir: {}   # Más adelante: PVC o BlobFuse
-      - name: output
-        emptyDir: {}   # Más adelante: PVC o BlobFuse
+      - name: shared-data
+        emptyDir: {}
+  backoffLimit: 1

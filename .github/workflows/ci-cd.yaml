@@ -37,6 +37,11 @@ jobs:
           docker build -t $ACR_LOGIN/ingestion-worker:latest ./ingestion
           docker push $ACR_LOGIN/ingestion-worker:latest
 
+      - name: Build and push frontend
+        run: |
+          docker build -t $ACR_LOGIN/hr-frontend:latest ./frontend
+          docker push $ACR_LOGIN/hr-frontend:latest
+
       - name: Get AKS credentials
         run: |
           az aks get-credentials --resource-group $RESOURCE_GROUP --name $AKS_NAME --overwrite-existing
@@ -65,6 +70,7 @@ jobs:
       - name: Deploy manifests
         run: |
           kubectl apply -f infra/k8s/namespace.yaml
+          kubectl apply -f infra/k8s/pvc.yaml
           kubectl apply -f infra/k8s/api-deployment.yaml
           kubectl apply -f infra/k8s/api-service.yaml
           kubectl apply -f infra/k8s/ingestion-job.yaml

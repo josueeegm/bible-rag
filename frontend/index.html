@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CV Assistant — Chat</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; max-width: 900px; margin: 20px auto; }
+    #drop { border: 2px dashed #888; padding: 20px; text-align:center; margin-bottom: 12px; }
+    #messages { border: 1px solid #ddd; padding: 10px; height: 320px; overflow:auto; background:#f8f8f8;}
+    .msg { margin:8px 0; }
+    .me { color: #064; }
+    .bot { color: #006; }
+    #controls { margin-top:10px; }
+  </style>
+</head>
+<body>
+  <h1>CV Assistant (RAG + DocIntelligence)</h1>
+  <div id="drop">Drop PDFs here or <input id="file" type="file" multiple accept="application/pdf"></div>
+  <div id="messages"></div>
+
+  <div id="controls">
+    <input id="q" style="width:70%" placeholder="Ask (in English) e.g. 'Who has experience in kubernetes?'" />
+    <button id="send">Send</button>
+    <button id="reindex">Reindex</button>
+  </div>
+
+<script>
+const API = "/api"; // as the Ingress will forward root to frontend, and /api to backend; if different, cambia.
+
+const messages = document.getElementById('messages');
+function addMsg(who, text) {
+  const d = document.createElement('div'); d.className='msg ' + (who==='me'?'me':'bot'); d.innerText = (who==='me'?'You: ':'') + text;
+  messages.appendChild(d); messages.scrollTop = messages.scrollHeight;
+}
+
+document.getElementById('send').onclick = async () => {
+  const q = document.getElementById('q').value.trim();
+  if(!q) return;
+  addMsg('me', q);
+  document.getElementById('q').value='';
+  try {
+    const res = await fetch(`${API}/query?q=${encodeURIComponent(q)}&top_k=3`);
+    const j = await res.json();
+    addMsg('bot', j.answer || JSON.stringify(j));
+  } catch(e) {
+    addMsg('bot', 'Error: '+e);
+  }
+}
+
+document.getElementById('reindex').onclick = async () => {
+  addMsg('me', '[reindex]');
+  const r = await fetch(`${API}/reindex`, {method:'POST'});
+  const j = await r.json();
+  addMsg('bot', JSON.stringify(j));
+}
+
+const fileInput = document.getElementById('file');
+fileInput.onchange = async (ev) => {
+  const files = ev.target.files;
+  await uploadFiles(files);
+}
+const drop = document.getElementById('drop');
+drop.ondragover = (e)=>{ e.preventDefault(); drop.style.background='#eef'; }
+drop.ondragleave = (e)=>{ drop.style.background=''; }
+drop.ondrop = async (e) => {
+  e.preventDefault(); drop.style.background='';
+  const files = e.dataTransfer.files;
+  await uploadFiles(files);
+}
+
+async function uploadFiles(files) {
+  for(const f of files) {
+    if(!f.name.toLowerCase().endsWith('.pdf')) continue;
+    addMsg('me', '[upload] '+f.name);
+    const fd = new FormData();
+    fd.append('file', f);
+    try {
+      const res = await fetch(`${API}/upload`, { method:'POST', body: fd });
+      const j = await res.json();
+      addMsg('bot', 'Uploaded: '+ JSON.stringify(j));
+    } catch(err) {
+      addMsg('bot', 'Upload error: '+err);
+    }
+  }
+}
+</script>
+</body>
+</html>

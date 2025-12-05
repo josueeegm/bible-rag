@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bible-api
+  name: hr-frontend
   namespace: gio
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bible-api
+      app: hr-frontend
   template:
     metadata:
       labels:
-        app: bible-api
+        app: hr-frontend
     spec:
       containers:
-      - name: bible-api
-        image: giobibleacr2032.azurecr.io/bible-api:latest
+      - name: frontend
+        image: giobibleacr2032.azurecr.io/hr-frontend:latest
         ports:
         - containerPort: 80
         volumeMounts:

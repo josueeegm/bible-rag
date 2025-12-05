@@ -2,3 +2,6 @@ fastapi
 uvicorn
 prometheus_client
 pydantic
+requests
+scikit-learn
+python-multipart
